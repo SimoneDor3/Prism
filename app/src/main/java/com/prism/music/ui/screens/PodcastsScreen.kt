@@ -80,7 +80,14 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.launch
 
 /** A search on the Podcasts page: null lists while it's asking. */
-private class PodcastSearch(val query: String, val shows: List<PodcastItem>?, val episodes: List<Song>?)
+private class PodcastSearch(
+    val query: String, val shows: List<PodcastItem>?, val episodes: List<Song>?,
+    /** Shows the directory has for it, to add by their feeds. */
+    val directory: List<com.prism.music.data.podcast.DirectoryShow> = emptyList(),
+)
+
+/** How many new episodes the Podcasts page lists before its heading is tapped for the rest. */
+private const val NEW_SHOWN = 5
 
 /** What the Podcasts page shows: the account's shows and saved episodes (signed in), then YouTube Music's Podcasts page. */
 private class PodcastsHome(val yourShows: List<PodcastItem>, val saved: List<Song>, val shelves: List<Shelf>)
@@ -111,8 +118,14 @@ fun PodcastsScreen(bottomPadding: Dp) {
     }
     val resume by c.episodes.inProgress.collectAsState()
     val rssShows by remember { rssShowsFlow(c) }.collectAsState(null)
-    var addingRss by remember { mutableStateOf(false) }
+    // The address the Add dialog opens with: none typed yet, or a show's picked from the directory. Null when it's closed.
+    var addingRss by remember { mutableStateOf<String?>(null) }
     val onSong: (SongItem) -> Unit = { playEpisode(c, it.song, tr(R.string.podcasts)) }
+    // An episode under way is in Continue listening, so not here too.
+    val fresh = rememberNewEpisodes().filter { e -> resume.none { it.song.id == e.id } }
+    var allFresh by remember { mutableStateOf(false) }
+    val country = directoryCountry()
+    val genres = rememberDirectoryGenres()
     // Search right here: shows and episodes only, as you type (a moment after the last key).
     var query by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf("") }
     val found by androidx.compose.runtime.produceState<PodcastSearch?>(null, query) {
@@ -123,7 +136,8 @@ fun PodcastsScreen(bottomPadding: Dp) {
         coroutineScope {
             val shows = async { runCatching { c.ytm.search(q, com.prism.music.data.innertube.SearchFilter.PODCASTS).items.filterIsInstance<PodcastItem>() }.getOrNull() }
             val eps = async { runCatching { c.ytm.search(q, com.prism.music.data.innertube.SearchFilter.EPISODES).items.filterIsInstance<SongItem>().map { it.song } }.getOrNull() }
-            value = PodcastSearch(q, shows.await() ?: emptyList(), eps.await() ?: emptyList())
+            val listed = async { runCatching { c.podcastDirectory.search(q, country) }.getOrDefault(emptyList()) }
+            value = PodcastSearch(q, shows.await() ?: emptyList(), eps.await() ?: emptyList(), listed.await())
         }
     }
 
@@ -134,13 +148,19 @@ fun PodcastsScreen(bottomPadding: Dp) {
         found?.let { f ->
             when {
                 f.shows == null || f.episodes == null -> item(key = "searching") { LoadingState() }
-                f.shows.isEmpty() && f.episodes.isEmpty() -> item(key = "none") {
+                f.shows.isEmpty() && f.episodes.isEmpty() && f.directory.isEmpty() && genres.none { g -> (listOf(g) + g.sub).any { it.name.contains(f.query, ignoreCase = true) } } -> item(key = "none") {
                     EmptyState(PrismIcons.Podcasts, tr(R.string.nothing_found), tr(R.string.no_shows_or_episodes_for_try, f.query))
                 }
                 else -> {
+                    // A genre by that name (a kind inside one too: "video games" is in Leisure), to open its page.
+                    val named = genres.flatMap { listOf(it) + it.sub }.filter { it.name.contains(f.query, ignoreCase = true) }.take(4)
+                    if (named.isNotEmpty()) item(key = "found-genres") { Column { GenreTiles(named) } }
                     if (f.shows.isNotEmpty()) item(key = "found-shows") {
                         SectionHeader(tr(R.string.shows))
                         ItemCarousel(f.shows, { nav.open(it, onSong) })
+                    }
+                    if (f.directory.isNotEmpty()) item(key = "found-directory") {
+                        DirectoryShows(tr(R.string.shows), f.directory) { addingRss = it.feedUrl }
                     }
                     if (f.episodes.isNotEmpty()) {
                         item(key = "found-eps-h") { SectionHeader(tr(R.string.episodes)) }
@@ -162,17 +182,33 @@ fun PodcastsScreen(bottomPadding: Dp) {
                 ) { playEpisode(c, e.song, tr(R.string.continue_listening)) }
             }
         }
+        if (fresh.isNotEmpty()) {
+            item(key = "new-h") { SectionHeader(tr(R.string.section_new_episodes)) }
+            items(if (allFresh) fresh else fresh.take(NEW_SHOWN), key = { "n:" + it.id }) { song ->
+                EpisodeRow(Episode(song, date = null, description = null), showShow = true) { playEpisode(c, song, tr(R.string.section_new_episodes)) }
+            }
+            // The first few, and the rest on asking; put away again the same way.
+            if (fresh.size > NEW_SHOWN) item(key = "new-more") {
+                PrismTextButton(onClick = { allFresh = !allFresh }, modifier = Modifier.padding(horizontal = 8.dp)) {
+                    Text(tr(if (allFresh) R.string.show_less else R.string.show_more))
+                }
+            }
+        }
+        // The account's shows as soon as YouTube has answered; what else its page has comes after what's on the phone.
+        (load.state as? Load.Ok)?.value?.yourShows?.takeIf { it.isNotEmpty() }?.let { yours ->
+            item(key = "yours") {
+                SectionHeader(tr(R.string.your_shows))
+                ItemCarousel(yours, { nav.open(it, onSong) })
+            }
+        }
         // On the phone, so here whatever YouTube's page below does.
-        item(key = "rss") { RssShowsSection(rssShows.orEmpty()) { addingRss = true } }
+        item(key = "rss") { RssShowsSection(rssShows.orEmpty()) { addingRss = "" } }
+        item(key = "discover") { Column { PodcastDiscovery { addingRss = it.feedUrl } } }
         when (val st = load.state) {
             Load.Loading -> item { LoadingState() }
             is Load.Err -> item { ErrorState(st.message) { load.reload(false) } }
             is Load.Ok -> {
                 val home = st.value
-                if (home.yourShows.isNotEmpty()) item(key = "yours") {
-                    SectionHeader(tr(R.string.your_shows))
-                    ItemCarousel(home.yourShows, { nav.open(it, onSong) })
-                }
                 if (home.saved.isNotEmpty()) {
                     item(key = "saved-h") { SectionHeader(tr(R.string.episodes_for_later), onMore = { nav.go(Routes.playlist("SE")) }) }
                     items(home.saved.take(5), key = { "sv:" + it.id }) { song ->
@@ -193,10 +229,10 @@ fun PodcastsScreen(bottomPadding: Dp) {
             }
         }
     }
-    if (addingRss) AddRssShowDialog(onDismiss = { addingRss = false }) { show ->
-        addingRss = false
+    addingRss?.let { preset -> AddRssShowDialog(preset, onDismiss = { addingRss = null }) { show ->
+        addingRss = null
         nav.go(Routes.podcast(show.id))
-    }
+    } }
 }
 
 /** Plays one episode on its own (no music radio follows); it resumes where it was left. */
@@ -362,10 +398,11 @@ private fun RssShowsSection(shows: List<com.prism.music.data.podcast.RssShow>, o
 
 /** Paste a feed's address: the show is read and kept, or the dialog says why it can't be. */
 @Composable
-private fun AddRssShowDialog(onDismiss: () -> Unit, onAdded: (com.prism.music.data.podcast.RssShow) -> Unit) {
+internal fun AddRssShowDialog(preset: String, onDismiss: () -> Unit, onAdded: (com.prism.music.data.podcast.RssShow) -> Unit) {
     val c = LocalContainer.current
     val scope = rememberCoroutineScope()
-    var address by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    // [preset] is the feed of a show picked from the directory: there to see, and to add with one tap.
+    var address by androidx.compose.runtime.saveable.rememberSaveable(preset) { mutableStateOf(preset) }
     var problem by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var info by remember { mutableStateOf(false) }

@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">چھوٹے کور پر ٹیپ کر کے چلائیں یا روکیں</string>
     <string name="gb_lyrics_cover_plays_info">بول کھلے ہوں تو چھوٹے کور پر ٹیپ کرنے سے گانا چلتا یا رکتا ہے اور دیر تک دبانے سے بول بند ہو جاتے ہیں۔ بند ہونے پر: ٹیپ کرنے سے بول بند ہو جاتے ہیں۔</string>
     <string name="gb_lyrics_cover_plays_keywords">بول چھوٹا کور تھمب نیل آرٹ ورک ٹیپ چلائیں روکیں دیر تک دبائیں بند lyrics cover</string>
+    <string name="section_new_episodes">نئی ایپیسوڈز</string>
+    <string name="podcast_top_shows">مقبول ترین شوز</string>
 </resources>

@@ -5310,4 +5310,6 @@
     <string name="gb_lyrics_cover_plays">Ketuk sampul kecil untuk memutar atau menjeda</string>
     <string name="gb_lyrics_cover_plays_info">Saat lirik terbuka, mengetuk sampul kecil akan memutar atau menjeda, dan menekan lama akan menutup lirik. Nonaktif: mengetuk akan menutup lirik.</string>
     <string name="gb_lyrics_cover_plays_keywords">lirik sampul kecil gambar mini sampul ketuk putar jeda tekan lama tutup lyrics cover</string>
+    <string name="section_new_episodes">Episode baru</string>
+    <string name="podcast_top_shows">Acara teratas</string>
 </resources>

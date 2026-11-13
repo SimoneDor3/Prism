@@ -5310,4 +5310,6 @@
     <string name="gb_lyrics_cover_plays">點按小封面可播放或暫停</string>
     <string name="gb_lyrics_cover_plays_info">開啟歌詞時，點按小封面可播放或暫停，長按則關閉歌詞。關閉此項：點按會關閉歌詞。</string>
     <string name="gb_lyrics_cover_plays_keywords">歌詞 小封面 縮圖 封面圖 點按 點擊 播放 暫停 長按 關閉 歌詞 lyrics cover</string>
+    <string name="section_new_episodes">新單集</string>
+    <string name="podcast_top_shows">熱門節目</string>
 </resources>

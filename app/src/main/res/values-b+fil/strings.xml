@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">I-tap ang maliit na cover para mag-play o mag-pause</string>
     <string name="gb_lyrics_cover_plays_info">Kapag bukas ang lyrics, ang pag-tap sa maliit na cover ay magpe-play o magpa-pause, at ang matagal na pagpindot ay magsasara ng lyrics. Naka-off: ang pag-tap ay magsasara ng lyrics.</string>
     <string name="gb_lyrics_cover_plays_keywords">lyrics maliit na cover thumbnail artwork tap play pause matagal na pindot isara</string>
+    <string name="section_new_episodes">Mga bagong episode</string>
+    <string name="podcast_top_shows">Mga nangungunang show</string>
 </resources>

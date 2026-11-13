@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">Tryck på det lilla omslaget för att spela eller pausa</string>
     <string name="gb_lyrics_cover_plays_info">Med låttexten öppen spelar eller pausar ett tryck på det lilla omslaget, och ett långt tryck stänger låttexten. Av: ett tryck stänger låttexten.</string>
     <string name="gb_lyrics_cover_plays_keywords">låttext litet omslag miniatyr omslagsbild tryck spela pausa långt tryck stäng lyrics cover</string>
+    <string name="section_new_episodes">Nya avsnitt</string>
+    <string name="podcast_top_shows">Populäraste poddarna</string>
 </resources>

@@ -1169,6 +1169,8 @@ object HomeSections {
     const val NEW_TO_YOU = "local:new_to_you"
     const val DEEP_CUTS = "local:deep_cuts"
     const val ON_THIS_DAY = "local:on_this_day"
+    /** New episodes of the listener's shows, YouTube's and those added by RSS. Like Discover's, on Home only once added. */
+    const val NEW_EPISODES = "local:new_episodes"
     /** A holiday mix pinned on its own: "pin:holiday:<mix key>". */
     const val HOLIDAY_PIN = "holiday"
     const val YT_PREFIX = "yt:shelf:"
@@ -1203,6 +1205,7 @@ object HomeSections {
             NEW_TO_YOU -> com.prism.music.R.string.section_new_to_you
             DEEP_CUTS -> com.prism.music.R.string.section_deep_cuts
             ON_THIS_DAY -> com.prism.music.R.string.section_on_this_day
+            NEW_EPISODES -> com.prism.music.R.string.section_new_episodes
             else -> return s
         }
         return s.copy(title = com.prism.music.tr(id))
@@ -1241,6 +1244,7 @@ object HomeSections {
         HomeSectionConfig(NEW_TO_YOU, "New to you"),
         HomeSectionConfig(DEEP_CUTS, "Deep cuts"),
         HomeSectionConfig(ON_THIS_DAY, "On this day"),
+        HomeSectionConfig(NEW_EPISODES, "New episodes", style = SectionStyle.LIST),
     )
 
     /** What a fresh install's Home shows (and what Reset goes back to). */

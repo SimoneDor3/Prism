@@ -5433,4 +5433,6 @@
     <string name="reorder_picked_up">Picked up, %1$d of %2$d. Up and down move it, Enter puts it down</string>
     <string name="reorder_put_down">Put down, %1$d of %2$d</string>
     <string name="hold_and_drag_or_the_grip">Hold and drag, or drag the grip</string>
+    <string name="section_new_episodes">New episodes</string>
+    <string name="podcast_top_shows">Top shows</string>
 </resources>

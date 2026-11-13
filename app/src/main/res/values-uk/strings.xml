@@ -5535,4 +5535,6 @@
     <string name="gb_lyrics_cover_plays">Дотик до маленької обкладинки: відтворення або пауза</string>
     <string name="gb_lyrics_cover_plays_info">Коли текст відкрито, дотик до маленької обкладинки вмикає відтворення або паузу, а довге натискання закриває текст. Вимкнено: дотик закриває текст.</string>
     <string name="gb_lyrics_cover_plays_keywords">текст пісні маленька обкладинка мініатюра дотик відтворити пауза довге натискання закрити lyrics cover</string>
+    <string name="section_new_episodes">Нові епізоди</string>
+    <string name="podcast_top_shows">Популярні шоу</string>
 </resources>

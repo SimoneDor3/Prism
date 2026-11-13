@@ -5685,4 +5685,6 @@
     <string name="gb_lyrics_cover_plays">اضغط على الغلاف الصغير للتشغيل أو الإيقاف المؤقت</string>
     <string name="gb_lyrics_cover_plays_info">مع فتح الكلمات، الضغط على الغلاف الصغير يشغّل أو يوقف مؤقتًا، والضغط مطولًا يغلق الكلمات. عند الإيقاف: الضغط يغلق الكلمات.</string>
     <string name="gb_lyrics_cover_plays_keywords">الكلمات غلاف صغير صورة مصغرة ضغط تشغيل إيقاف مؤقت ضغط مطول إغلاق lyrics cover</string>
+    <string name="section_new_episodes">حلقات جديدة</string>
+    <string name="podcast_top_shows">أبرز البرامج</string>
 </resources>

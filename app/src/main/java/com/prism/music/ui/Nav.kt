@@ -70,6 +70,8 @@ object Routes {
     /** One of Prism's own mixes (Daily Mix 1, the time-of-day mix, Release Radar). */
     fun mix(id: String) = "mix/${Uri.encode(id)}"
     fun podcast(id: String) = "podcast/${Uri.encode(id)}"
+    /** One genre of the podcast directory, by the directory's id for it. */
+    fun podcastGenre(id: String) = "podcast_genre/${Uri.encode(id)}"
     /** A settings page; [find] is the group to bring into view (a Settings search result, #73). */
     fun settings(section: String, find: String? = null) = "settings/$section" + (find?.let { "?find=${Uri.encode(it)}" } ?: "")
     fun album(id: String) = "album/${Uri.encode(id)}"

@@ -462,6 +462,12 @@ class AppContainer(val app: Application) {
             com.prism.music.data.podcast.RssGuard.feedClient(TestHooks.network),
         )
     }
+    /** Shows to add, from Apple's podcast directory (Podcasts → Top shows, and its search). */
+    val podcastDirectory by lazy {
+        com.prism.music.data.podcast.PodcastDirectory(com.prism.music.data.podcast.RssGuard.feedClient(TestHooks.network))
+    }
+    /** The listener's shows' new episodes (Home's section, and Podcasts'). */
+    val newEpisodes by lazy { com.prism.music.data.podcast.NewEpisodes(this) }
     val library = LibraryRepository(this)
     /** Liked songs mirrored into a real YouTube Music playlist, when the listener turns that on. */
     val likedPlaylist = com.prism.music.data.LikedPlaylist(this)

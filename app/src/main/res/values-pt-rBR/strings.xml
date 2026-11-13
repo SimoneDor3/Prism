@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">Toque na capa pequena para tocar ou pausar</string>
     <string name="gb_lyrics_cover_plays_info">Com a letra aberta, um toque na capa pequena toca ou pausa, e um toque longo fecha a letra. Desativado: um toque fecha a letra.</string>
     <string name="gb_lyrics_cover_plays_keywords">letra capa pequena miniatura toque tocar pausar toque longo fechar lyrics cover</string>
+    <string name="section_new_episodes">Novos episódios</string>
+    <string name="podcast_top_shows">Programas em alta</string>
 </resources>

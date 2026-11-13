@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">Tocar la portada pequeña para reproducir o pausar</string>
     <string name="gb_lyrics_cover_plays_info">Con la letra abierta, tocar la portada pequeña reproduce o pausa, y una pulsación larga cierra la letra. Desactivado: tocar cierra la letra.</string>
     <string name="gb_lyrics_cover_plays_keywords">letra portada pequeña miniatura carátula tocar reproducir pausar pulsación larga cerrar lyrics cover</string>
+    <string name="section_new_episodes">Episodios nuevos</string>
+    <string name="podcast_top_shows">Programas más populares</string>
 </resources>

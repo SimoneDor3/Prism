@@ -770,6 +770,9 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
                         composable("podcast/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
                             Beside { com.prism.music.ui.screens.PodcastScreen(it.arguments?.getString("id")!!, bottomPadding) }
                         }
+                        composable("podcast_genre/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
+                            ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.PodcastGenreScreen(it.arguments?.getString("id")!!, bottomPadding) }
+                        }
                         composable(Routes.DOWNLOADS) { Beside { CollectionScreen(CollectionType.DOWNLOADS, "downloads", null, bottomPadding) } }
                         composable("folder/{id}", listOf(navArgument("id") { type = NavType.StringType })) {
                             ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.FolderScreen(it.arguments?.getString("id")!!, bottomPadding) }

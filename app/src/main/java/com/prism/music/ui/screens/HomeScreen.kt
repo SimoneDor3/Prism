@@ -495,6 +495,7 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
                         HomeSections.SEASONAL -> if (online) HolidaySection(cfg)
                         HomeSections.NEW_TO_YOU, HomeSections.DEEP_CUTS -> DiscoverMixSection(cfg, online)
                         HomeSections.ON_THIS_DAY -> OnThisDaySection(cfg, online)
+                        HomeSections.NEW_EPISODES -> NewEpisodesSection(cfg, online)
                         HomeSections.REPLAY -> ReplaySection(cfg, recap)
                         HomeSections.GENRES -> TopGenresSection(cfg)
                         HomeSections.MOODS -> if (online) {

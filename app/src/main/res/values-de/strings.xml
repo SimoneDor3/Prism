@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">Auf das kleine Cover tippen, um abzuspielen oder zu pausieren</string>
     <string name="gb_lyrics_cover_plays_info">Bei geöffnetem Songtext spielt ein Tippen auf das kleine Cover ab oder pausiert, ein langer Druck schließt den Songtext. Aus: Ein Tippen schließt den Songtext.</string>
     <string name="gb_lyrics_cover_plays_keywords">Songtext kleines Cover Vorschaubild Albumcover Tippen Abspielen Pause langer Druck schließen lyrics</string>
+    <string name="section_new_episodes">Neue Folgen</string>
+    <string name="podcast_top_shows">Beliebteste Sendungen</string>
 </resources>

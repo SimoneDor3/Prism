@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">Tik op de kleine cover om af te spelen of te pauzeren</string>
     <string name="gb_lyrics_cover_plays_info">Met geopende songtekst speelt een tik op de kleine cover af of pauzeert, en een lange druk sluit de songtekst. Uit: een tik sluit de songtekst.</string>
     <string name="gb_lyrics_cover_plays_keywords">songtekst kleine cover miniatuur albumhoes tik afspelen pauzeren lange druk sluiten lyrics</string>
+    <string name="section_new_episodes">Nieuwe afleveringen</string>
+    <string name="podcast_top_shows">Populairste shows</string>
 </resources>

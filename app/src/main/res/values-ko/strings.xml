@@ -5310,4 +5310,6 @@
     <string name="gb_lyrics_cover_plays">작은 커버를 탭해 재생 또는 일시중지</string>
     <string name="gb_lyrics_cover_plays_info">가사가 열려 있을 때 작은 커버를 탭하면 재생하거나 일시중지하고, 길게 누르면 가사가 닫힙니다. 꺼짐: 탭하면 가사가 닫힙니다.</string>
     <string name="gb_lyrics_cover_plays_keywords">가사 작은 커버 썸네일 아트워크 탭 재생 일시중지 길게 누르기 닫기 lyrics cover</string>
+    <string name="section_new_episodes">새 에피소드</string>
+    <string name="podcast_top_shows">인기 프로그램</string>
 </resources>

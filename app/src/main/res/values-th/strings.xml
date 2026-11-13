@@ -5310,4 +5310,6 @@
     <string name="gb_lyrics_cover_plays">แตะที่ปกขนาดเล็กเพื่อเล่นหรือหยุดชั่วคราว</string>
     <string name="gb_lyrics_cover_plays_info">เมื่อเปิดเนื้อเพลงอยู่ การแตะที่ปกขนาดเล็กจะเล่นหรือหยุดชั่วคราว และการกดค้างจะปิดเนื้อเพลง เมื่อปิดอยู่: การแตะจะปิดเนื้อเพลง</string>
     <string name="gb_lyrics_cover_plays_keywords">เนื้อเพลง ปกเล็ก ภาพขนาดย่อ ปก แตะ เล่น หยุดชั่วคราว กดค้าง ปิด lyrics cover</string>
+    <string name="section_new_episodes">ตอนใหม่</string>
+    <string name="podcast_top_shows">รายการยอดนิยม</string>
 </resources>

@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">Toucher la petite pochette pour lire ou mettre en pause</string>
     <string name="gb_lyrics_cover_plays_info">Avec les paroles ouvertes, un appui sur la petite pochette lance la lecture ou la met en pause, et un appui long ferme les paroles. Désactivé : un appui ferme les paroles.</string>
     <string name="gb_lyrics_cover_plays_keywords">paroles petite pochette vignette cover appui lecture pause appui long fermer lyrics</string>
+    <string name="section_new_episodes">Nouveaux épisodes</string>
+    <string name="podcast_top_shows">Émissions les plus populaires</string>
 </resources>

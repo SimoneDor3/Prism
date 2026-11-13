@@ -5310,4 +5310,6 @@
     <string name="gb_lyrics_cover_plays">小さなジャケットをタップして再生・一時停止</string>
     <string name="gb_lyrics_cover_plays_info">歌詞を開いているとき、小さなジャケットをタップすると再生または一時停止し、長押しすると歌詞を閉じます。オフの場合：タップで歌詞を閉じます。</string>
     <string name="gb_lyrics_cover_plays_keywords">歌詞 小さなジャケット サムネイル アートワーク タップ 再生 一時停止 長押し 閉じる lyrics cover</string>
+    <string name="section_new_episodes">新着エピソード</string>
+    <string name="podcast_top_shows">人気の番組</string>
 </resources>

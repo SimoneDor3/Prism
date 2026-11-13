@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">הקשה על העטיפה הקטנה להפעלה או השהיה</string>
     <string name="gb_lyrics_cover_plays_info">כשהמילים פתוחות, הקשה על העטיפה הקטנה מפעילה או משהה, ולחיצה ארוכה סוגרת את המילים. כבוי: הקשה סוגרת את המילים.</string>
     <string name="gb_lyrics_cover_plays_keywords">מילים עטיפה קטנה תמונה ממוזערת הקשה הפעלה השהיה לחיצה ארוכה סגירה lyrics cover</string>
+    <string name="section_new_episodes">פרקים חדשים</string>
+    <string name="podcast_top_shows">התוכניות המובילות</string>
 </resources>

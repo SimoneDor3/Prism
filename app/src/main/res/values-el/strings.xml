@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">Πάτημα στο μικρό εξώφυλλο για αναπαραγωγή ή παύση</string>
     <string name="gb_lyrics_cover_plays_info">Με ανοιχτούς τους στίχους, ένα πάτημα στο μικρό εξώφυλλο ξεκινά ή παύει την αναπαραγωγή και ένα παρατεταμένο πάτημα κλείνει τους στίχους. Ανενεργό: ένα πάτημα κλείνει τους στίχους.</string>
     <string name="gb_lyrics_cover_plays_keywords">στίχοι μικρό εξώφυλλο μικρογραφία πάτημα αναπαραγωγή παύση παρατεταμένο πάτημα κλείσιμο lyrics cover</string>
+    <string name="section_new_episodes">Νέα επεισόδια</string>
+    <string name="podcast_top_shows">Κορυφαίες εκπομπές</string>
 </resources>

@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">Atinge coperta mică pentru a reda sau a întrerupe</string>
     <string name="gb_lyrics_cover_plays_info">Cu versurile deschise, o atingere pe coperta mică redă sau întrerupe, iar o apăsare lungă închide versurile. Dezactivat: o atingere închide versurile.</string>
     <string name="gb_lyrics_cover_plays_keywords">versuri copertă mică miniatură atingere redă întrerupe apăsare lungă închide lyrics cover</string>
+    <string name="section_new_episodes">Episoade noi</string>
+    <string name="podcast_top_shows">Cele mai populare emisiuni</string>
 </resources>

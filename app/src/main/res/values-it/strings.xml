@@ -5460,4 +5460,6 @@
     <string name="gb_lyrics_cover_plays">Tocca la copertina piccola per riprodurre o mettere in pausa</string>
     <string name="gb_lyrics_cover_plays_info">Con i testi aperti, un tocco sulla copertina piccola riproduce o mette in pausa e una pressione lunga chiude i testi. Disattivato: un tocco chiude i testi.</string>
     <string name="gb_lyrics_cover_plays_keywords">testi copertina piccola miniatura artwork tocco riproduci pausa pressione lunga chiudi lyrics cover</string>
+    <string name="section_new_episodes">Nuovi episodi</string>
+    <string name="podcast_top_shows">Programmi più popolari</string>
 </resources>

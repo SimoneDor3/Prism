@@ -5385,4 +5385,6 @@
     <string name="gb_lyrics_cover_plays">Oynatmak veya duraklatmak için küçük kapağa dokun</string>
     <string name="gb_lyrics_cover_plays_info">Sözler açıkken küçük kapağa dokunmak oynatır veya duraklatır, uzun basmak ise sözleri kapatır. Kapalıyken: dokunmak sözleri kapatır.</string>
     <string name="gb_lyrics_cover_plays_keywords">sözler küçük kapak önizleme albüm kapağı dokun oynat duraklat uzun bas kapat lyrics cover</string>
+    <string name="section_new_episodes">Yeni bölümler</string>
+    <string name="podcast_top_shows">Popüler programlar</string>
 </resources>

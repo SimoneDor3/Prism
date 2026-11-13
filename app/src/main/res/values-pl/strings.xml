@@ -5535,4 +5535,6 @@
     <string name="gb_lyrics_cover_plays">Dotknij małej okładki, aby odtworzyć lub wstrzymać</string>
     <string name="gb_lyrics_cover_plays_info">Przy otwartym tekście dotknięcie małej okładki odtwarza lub wstrzymuje, a długie przytrzymanie zamyka tekst. Wyłączone: dotknięcie zamyka tekst.</string>
     <string name="gb_lyrics_cover_plays_keywords">tekst mała okładka miniatura grafika dotknięcie odtwórz wstrzymaj długie przytrzymanie zamknij lyrics cover</string>
+    <string name="section_new_episodes">Nowe odcinki</string>
+    <string name="podcast_top_shows">Najpopularniejsze programy</string>
 </resources>
