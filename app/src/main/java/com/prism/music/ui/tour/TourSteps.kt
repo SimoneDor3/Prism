@@ -28,6 +28,12 @@ data class TourStep(
     /** "Show me": where it opens (the tour closes; it can be taken again from Settings → About). */
     val showMe: String? = null,
     val kind: Kind = Kind.PLAIN,
+    /**
+     * 1.8.7.6 (plan-1.8.7.6 §4.1 S6, D5): the card ends with one line asking to support Prism, shown once per release and
+     * never with "I've supported Prism" on ([com.prism.music.ui.support.SupportWhatsNewLine]). Only on the last card of
+     * a release's cards (`TourTest`).
+     */
+    val support: Boolean = false,
 ) {
     enum class Kind { PLAIN, NOTIFICATIONS }
 }
@@ -64,6 +70,12 @@ private const val V1_8_3 = 59
 private const val V1_8_4 = 61
 /** Prism 1.8.5 (build 63): Replay & Rewind 2026. */
 private const val V1_8_5 = 63
+private const val V1_8_6 = 64
+private const val V1_8_7 = 65
+/** Prism 1.8.7.5 (build 66): Your Spotify, and fixes. */
+private const val V1_8_7_5 = 66
+/** Prism 1.8.7.6 (build 67): the small things, and Spotify's canvas. */
+private const val V1_8_7_6 = 67
 
     /** Every step, in the order they're shown. */
     val steps: List<TourStep> = listOf(
@@ -690,6 +702,100 @@ private const val V1_8_5 = 63
                 tr(R.string.tour_185_also_open_with),
             ),
             listOf(PrismIcons.Search, PrismIcons.Shuffle),
+        ),
+        TourStep(
+            // 1.8.6 Canvas. Opens the Player page at Cover, the group the Canvas row is in.
+            V1_8_6, PrismIcons.AnimatedCover, tr(R.string.tour_186_canvas_title),
+            tr(R.string.tour_186_canvas_about),
+            listOf(
+                tr(R.string.tour_186_canvas_point_1),
+                // Owner, 2026-11-13: Canvas (the loops from music videos) and Animated covers are two settings.
+                tr(R.string.tour_186_canvas_two, tr(R.string.canvas), tr(R.string.animated_covers)),
+                tr(R.string.tour_186_canvas_point_3, tr(R.string.canvas_pick_video), tr(R.string.canvas_pick_part)),
+                tr(R.string.tour_186_canvas_point_4),
+            ),
+            listOf(PrismIcons.Video, PrismIcons.Fullscreen),
+            showMe = Routes.settings(SettingsPageId.PLAYER.key, find = tr(R.string.cover)),
+        ),
+        TourStep(
+            // The hours on Replay's "Hours by month" bars (the owner's ask, 2026-11-13).
+            V1_8_6, PrismIcons.Stats, tr(R.string.also_new),
+            tr(R.string.from_your_requests),
+            listOf(tr(R.string.tour_186_also_hours, tr(R.string.hours_by_month))),
+            showMe = Routes.REPLAY,
+        ),
+        TourStep(
+            // 1.8.7 It just plays. Opens Backup & about at Diagnostics, where "Is playback working?" is.
+            V1_8_7, PrismIcons.Play, tr(R.string.tour_187_plays_title),
+            tr(R.string.tour_187_plays_about),
+            listOf(
+                tr(R.string.tour_187_plays_point_1),
+                tr(R.string.tour_187_plays_point_2),
+                tr(R.string.tour_187_plays_point_3),
+                tr(R.string.tour_187_plays_point_4, tr(R.string.selftest_title), tr(R.string.diagnostics)),
+            ),
+            listOf(PrismIcons.Check, PrismIcons.Info),
+            showMe = Routes.settings(SettingsPageId.BACKUP_ABOUT.key, find = tr(R.string.diagnostics)),
+        ),
+        TourStep(
+            // Opens the Player page at Cover: "Keep lyrics showing" is in the Canvas row's sheet there.
+            V1_8_7, PrismIcons.Lyrics, tr(R.string.also_new),
+            tr(R.string.tour_187_also_about),
+            listOf(
+                tr(R.string.tour_187_also_lyrics_line, tr(R.string.canvas_lyrics)),
+                tr(R.string.tour_187_also_lyrics_right),
+                tr(R.string.tour_187_also_blend, tr(R.string.crossfade)),
+                tr(R.string.tour_187_also_lighter),
+            ),
+            listOf(PrismIcons.Shuffle, PrismIcons.Speed),
+            showMe = Routes.settings(SettingsPageId.PLAYER.key, find = tr(R.string.cover)),
+        ),
+        TourStep(
+            // 1.8.7.5 Your Spotify. Opens Accounts & sharing at Spotify, where the Connect sheet's two cards are.
+            V1_8_7_5, PrismIcons.Link, tr(R.string.tour_1875_spotify_title),
+            tr(R.string.tour_1875_spotify_about),
+            listOf(
+                tr(R.string.tour_1875_spotify_point_1),
+                tr(R.string.tour_1875_spotify_point_2),
+                tr(R.string.tour_1875_spotify_point_3),
+                tr(R.string.tour_1875_spotify_point_4),
+            ),
+            listOf(PrismIcons.Heart, PrismIcons.QueueMusic),
+            showMe = Routes.settings(SettingsPageId.ACCOUNTS_SHARING.key, find = tr(R.string.spotify)),
+        ),
+        TourStep(
+            V1_8_7_5, PrismIcons.Check, tr(R.string.also_new),
+            tr(R.string.from_your_requests),
+            listOf(
+                tr(R.string.tour_1875_also_queue),
+                tr(R.string.tour_1875_also_home),
+                tr(R.string.tour_1875_also_busy),
+                tr(R.string.tour_1875_also_heard),
+            ),
+        ),
+        TourStep(
+            V1_8_7_6, PrismIcons.PlayCircle, tr(R.string.tour_1876_canvas_title),
+            tr(R.string.tour_1876_canvas_about),
+            listOf(
+                tr(R.string.tour_1876_canvas_point_1),
+                tr(R.string.tour_1876_canvas_point_2),
+                tr(R.string.tour_1876_canvas_point_3),
+            ),
+            // The Canvas switch and "Spotify's canvas first" under it are in the Player page's Cover group.
+            showMe = Routes.settings(SettingsPageId.PLAYER.key, find = tr(R.string.cover)),
+        ),
+        TourStep(
+            V1_8_7_6, PrismIcons.Check, tr(R.string.also_new),
+            tr(R.string.from_your_requests),
+            listOf(
+                tr(R.string.tour_1876_also_loop),
+                tr(R.string.tour_1876_also_eq),
+                tr(R.string.tour_1876_also_kids),
+                tr(R.string.tour_1876_also_cast),
+                tr(R.string.tour_1876_also_history),
+            ),
+            // The release's last card carries the one line about supporting Prism (plan-1.8.7.6 §4.1 S6).
+            support = true,
         ),
         TourStep(
             V1_7, PrismIcons.Update, tr(R.string.stay_in_the_loop),

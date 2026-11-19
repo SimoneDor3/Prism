@@ -2,6 +2,7 @@ package com.prism.music
 
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.performClick
 import com.prism.music.data.AutoplayLength
 import com.prism.music.data.prefs.AppSettings
 import com.prism.music.data.prefs.AutoplaySource
@@ -97,7 +98,7 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
     @Test fun withEverythingOnItStillFits() {
         container.settings.setMix(true)
         container.settings.setMixAuto(false)
-        until("crossfade on") { it.mix && !it.mixAuto }
+        until("crossfade on") { it.mix.on && !it.mix.auto }
         show()
         assertBudgets("crossfade on, fixed length")
         assertEquals(listOf(6, 2, 5, 2, 5), groupSizes())
@@ -143,19 +144,19 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
         // mix, mix_auto: "Crossfade"; its three rows only show with it on (the length with a fixed one).
         assertFalse(hasRow(length) || hasRow(beatMatch) || hasRow(keepAlbums))
         choose(crossfade, Crossfade.AUTO.label)
-        until("mix") { it.mix && it.mixAuto }
+        until("mix") { it.mix.on && it.mix.auto }
         assertFalse(hasRow(length))
         choose(crossfade, Crossfade.FIXED.label)
-        until("mix_auto") { it.mix && !it.mixAuto }
+        until("mix_auto") { it.mix.on && !it.mix.auto }
         // mix_seconds
         slide(length, 9f)
-        until("mix_seconds") { it.mixSeconds == 9 }
+        until("mix_seconds") { it.mix.seconds == 9 }
         assertEquals("9 s", valueOf(length))
         // mix_beat_match, mix_keep_albums
         tap(beatMatch)
-        until("mix_beat_match") { it.mixBeatMatch }
+        until("mix_beat_match") { it.mix.beatMatch }
         tap(keepAlbums)
-        until("mix_keep_albums") { it.mixKeepAlbums }
+        until("mix_keep_albums") { it.mix.keepAlbums }
         // crossfade_curve: in its pick sheet, one card a curve.
         tap(curve)
         assertEquals(CrossfadeCurve.entries.size, compose.onAllNodes(hasTestTag(SettingsTags.SHEET_OPTION)).fetchSemanticsNodes().size)
@@ -199,8 +200,8 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
         until("the reset") { it.behavior == d.behavior && it.sound == d.sound }
         until("the reset") {
             it.autoplay == d.autoplay && it.autoplaySource == d.autoplaySource && it.radioSongsOnly == d.radioSongsOnly && it.songsEverywhere == d.songsEverywhere &&
-                it.videoContinues == d.videoContinues && it.mix == d.mix && it.mixAuto == d.mixAuto && it.mixSeconds == d.mixSeconds &&
-                it.mixBeatMatch == d.mixBeatMatch && it.mixKeepAlbums == d.mixKeepAlbums && it.stopOnSwipeAway == d.stopOnSwipeAway
+                it.videoContinues == d.videoContinues && it.mix.on == d.mix.on && it.mix.auto == d.mix.auto && it.mix.seconds == d.mix.seconds &&
+                it.mix.beatMatch == d.mix.beatMatch && it.mix.keepAlbums == d.mix.keepAlbums && it.stopOnSwipeAway == d.stopOnSwipeAway
         }
         assertEquals(0, changedRows())
         assertEquals(listOf(6, 2, 2, 2, 5), groupSizes())
@@ -252,6 +253,30 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
         until("face_down_pause off") { !it.behavior.faceDownPause }
     }
 
+    /** #493: why the last two songs didn't blend is the last line behind Crossfade's ⓘ, and only when there's a reason. */
+    @Test fun crossfadesInfoSaysWhyTheLastSongsDidntBlend() {
+        val line = "Last time: One of the two is a music video."
+        val more = tr(R.string.more_about, crossfade)
+        fun shown(text: String) = compose.onAllNodes(androidx.compose.ui.test.hasText(text, substring = true)).fetchSemanticsNodes().size
+        show()
+        compose.onNode(androidx.compose.ui.test.hasContentDescription(more)).performClick()
+        compose.waitForIdle()
+        assertEquals("its ⓘ opens", 1, shown(t(R.string.crossfade_choice_info)))
+        assertEquals("no reason yet: no last line", 0, shown("Last time:"))
+        container.mixState.why.value = com.prism.music.playback.MixRefusal(com.prism.music.playback.MixWhy.VIDEO, "a", "b")
+        compose.waitForIdle()
+        assertEquals(1, shown(line))
+        // Behind the ⓘ only: closed, it's not on the page.
+        compose.onNode(androidx.compose.ui.test.hasContentDescription(tr(R.string.hide_details))).performClick()
+        compose.waitForIdle()
+        assertEquals(0, shown(line))
+        // A blend happened: the line goes.
+        container.mixState.why.value = null
+        compose.onNode(androidx.compose.ui.test.hasContentDescription(more)).performClick()
+        compose.waitForIdle()
+        assertEquals(0, shown("Last time:"))
+    }
+
     /** Links written before the rework still land: the old page's groups by their old names. */
     @Test fun oldGroupNamesOpenTheGroupThatHoldsThemNow() {
         val old = SettingsPageId.PLAYBACK.oldGroups
@@ -276,7 +301,7 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
     @Test fun atLargeTextNothingIsCutOff() {
         container.settings.setMix(true)
         container.settings.setMixAuto(false)
-        until("crossfade on") { it.mix && !it.mixAuto }
+        until("crossfade on") { it.mix.on && !it.mix.auto }
         show(fontScale = 1.5f)
         assertBudgets("large text")
         assertNoTextCutOff("font scale 1.5")
@@ -296,5 +321,5 @@ class PlaybackPageTest : ListeningPageHarness(SettingsPageId.PLAYBACK) {
 
     /** With crossfade on at a fixed length (the page's longest state). */
     @Test @Config(qualifiers = "w360dp-h2200dp-xxhdpi") fun drawnWithCrossfadeOn() =
-        drawn("playback-dark-crossfade-on", true) { it.copy(themeMode = ThemeMode.DARK, mix = true, mixAuto = false, mixSeconds = 8) }
+        drawn("playback-dark-crossfade-on", true) { it.copy(themeMode = ThemeMode.DARK, mix = it.mix.copy(on = true, auto = false, seconds = 8)) }
 }

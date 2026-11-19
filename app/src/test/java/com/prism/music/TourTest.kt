@@ -40,6 +40,25 @@ class TourTest {
         }
     }
 
+    /** The cards with the support line (1.8.7.6) that are not the last of their release's cards. */
+    private fun supportMisplaced(steps: List<TourStep>): List<String> = steps.withIndex()
+        .filter { (i, s) -> s.support && steps.drop(i + 1).any { it.since == s.since } }
+        .map { (_, s) -> "${s.since}: ${s.title}" }
+
+    /**
+     * 1.8.7.6 (plan-1.8.7.6 §4.1 S6, D5): the line asking to support Prism sits only on the last card of a release's
+     * cards (so a release asks once, at its end).
+     */
+    @Test
+    fun theSupportLineOnlyEndsARelease() {
+        assertEquals(emptyList<String>(), supportMisplaced(Tour.steps))
+        // The rule catches a line put on an earlier card of a release.
+        val icon = com.prism.music.ui.theme.PrismIcons.Heart
+        val wrong = listOf(TourStep(70, icon, "a", "b", support = true), TourStep(70, icon, "c", "d"))
+        assertEquals(listOf("70: a"), supportMisplaced(wrong))
+        assertEquals(emptyList<String>(), supportMisplaced(listOf(TourStep(70, icon, "a", "b"), TourStep(70, icon, "c", "d", support = true), TourStep(71, icon, "e", "f", support = true))))
+    }
+
     @Test
     fun stepsAreDatedNoLaterThanThisBuild() {
         assertTrue(Tour.steps.all { it.since in 1..BuildConfig.VERSION_CODE })
@@ -141,14 +160,93 @@ class TourTest {
         }
     }
 
+    /** 1.8.7.5 (build 66): an update from 1.8.7 shows Your Spotify, opening Accounts & sharing at Spotify, then the fixes. */
+    /**
+     * 1.8.7.6 (build 67): an update from 1.8.7.5 (66) shows Spotify's canvas, then the fixes, and nothing older. The first
+     * page opens the Player page at Canvas; only the last carries the line about supporting Prism.
+     */
+    @Test
+    fun anUpdateFrom1875ShowsSpotifysCanvas() {
+        val pages = Tour.stepsAfter(66)
+        assertEquals(listOf(R.string.tour_1876_canvas_title, R.string.also_new).map { tr(it) }, pages.map { it.title })
+        assertTrue(pages.all { it.since == 67 && it.kind == TourStep.Kind.PLAIN })
+        assertTrue(pages.all { it.points.size in 3..5 && it.points.all { p -> p.isNotBlank() } })
+        assertTrue(pages.flatMap { it.points + it.body }.none { "%" in it })
+        assertEquals(listOf(false, true), pages.map { it.support })
+        val (key, find) = parse(pages.first().showMe!!)
+        assertEquals(SettingsPageId.PLAYER, SettingsMap.resolve(key, find)?.page)
+        // An update from 1.8.7 sees both releases' pages, in order.
+        assertEquals(listOf(66, 66, 67, 67), Tour.stepsAfter(65).map { it.since })
+    }
+
+    @Test
+    fun anUpdateFrom187ShowsYourSpotify() {
+        val pages = Tour.stepsAfter(65).filter { it.since == 66 }
+        assertEquals(listOf(R.string.tour_1875_spotify_title, R.string.also_new).map { tr(it) }, pages.map { it.title })
+        assertTrue(pages.all { it.since == 66 && it.kind == TourStep.Kind.PLAIN })
+        assertTrue(pages.all { it.points.size in 3..5 && it.points.all { p -> p.isNotBlank() } })
+        assertTrue(pages.flatMap { it.points + it.body }.none { "%" in it })
+        val (key, find) = parse(pages.first().showMe!!)
+        assertEquals(SettingsTarget(SettingsPageId.ACCOUNTS_SHARING, tr(R.string.spotify)), SettingsMap.resolve(key, find))
+    }
+
+    /**
+     * 1.8.7 (build 65): an update from 1.8.6 (64) shows It just plays, then the rest, and nothing older. The first page
+     * names the check as its row is written and opens the group it is in; the second names the Canvas switch and
+     * Crossfade, and opens the Player page at Cover.
+     */
+    @Test
+    fun anUpdateFrom186ShowsItJustPlays() {
+        val pages = Tour.stepsAfter(64).filter { it.since == 65 }
+        assertEquals(listOf(R.string.tour_187_plays_title, R.string.also_new).map { tr(it) }, pages.map { it.title })
+        assertTrue(pages.all { it.since == 65 && it.kind == TourStep.Kind.PLAIN })
+        assertTrue(pages.all { it.points.size in 3..5 && it.points.all { p -> p.isNotBlank() } })
+        assertTrue(pages.flatMap { it.points + it.body }.none { "%" in it })
+        val plays = pages.first()
+        assertTrue(plays.points.last().contains(tr(R.string.selftest_title)) && plays.points.last().contains(tr(R.string.diagnostics)))
+        val (key, find) = parse(plays.showMe!!)
+        val page = SettingsPageId.BACKUP_ABOUT
+        assertEquals(SettingsTarget(page, tr(R.string.diagnostics)), SettingsMap.resolve(key, find))
+        assertTrue(page.index.any { it.group == tr(R.string.diagnostics) && it.title == tr(R.string.selftest_title) })
+        val also = pages.last()
+        assertTrue(also.points[0].contains(tr(R.string.canvas_lyrics)))
+        assertTrue(also.points[2].contains(tr(R.string.crossfade)))
+        val (alsoKey, alsoFind) = parse(also.showMe!!)
+        assertEquals(SettingsPageId.PLAYER.key, alsoKey)
+        assertEquals(tr(R.string.cover), alsoFind)
+        assertTrue(SettingsPageId.PLAYER.index.any { it.group == tr(R.string.cover) && it.title == tr(R.string.canvas_lyrics) })
+    }
+
+    /**
+     * 1.8.6 (build 64): an update from 1.8.5 (63) shows Canvas, then the hours on Replay's chart, and nothing older.
+     * Canvas's page names the switch and the menu's rows as they are written, and opens the Player page at Cover.
+     */
+    @Test
+    fun anUpdateFrom185ShowsCanvas() {
+        val pages = Tour.stepsAfter(63).filter { it.since == 64 }
+        assertEquals(listOf(R.string.tour_186_canvas_title, R.string.also_new).map { tr(it) }, pages.map { it.title })
+        assertTrue(pages.all { it.since == 64 && it.kind == TourStep.Kind.PLAIN })
+        assertTrue(pages.flatMap { it.points + it.body }.none { "%" in it })
+        val canvas = pages.first()
+        assertEquals(4, canvas.points.size)
+        // Owner, 2026-11-13: Canvas and Animated covers are two settings; the page names both switches.
+        assertTrue(canvas.points[1].contains(tr(R.string.canvas)) && canvas.points[1].contains(tr(R.string.animated_covers)))
+        assertTrue(canvas.points[2].contains(tr(R.string.canvas_pick_video)) && canvas.points[2].contains(tr(R.string.canvas_pick_part)))
+        val (key, find) = parse(canvas.showMe!!)
+        assertEquals(com.prism.music.ui.screens.settings.SettingsPageId.PLAYER.key, key)
+        assertEquals(tr(R.string.cover), find)
+        assertTrue(pages.last().points.single().contains(tr(R.string.hours_by_month)))
+        assertEquals(com.prism.music.ui.Routes.REPLAY, pages.last().showMe)
+    }
+
     /**
      * 1.8.5 (build 63): an update from 1.8.4.1 (62) shows Replay's new sections, Rewind 2026, the widgets and notices,
      * and the rest, in that order, and nothing older.
      */
     @Test
     fun anUpdateFrom1841ShowsThe185Pages() {
-        val pages = Tour.stepsAfter(62)
-        assertTrue(pages.all { it.since == 63 && it.kind == TourStep.Kind.PLAIN })
+        val pages = Tour.stepsAfter(62).filter { it.since == 63 }
+        assertTrue(pages.all { it.kind == TourStep.Kind.PLAIN })
         assertEquals(
             listOf(R.string.tour_185_replay_title, R.string.tour_185_rewind_title, R.string.tour_185_more_title, R.string.also_new).map { tr(it) },
             pages.map { it.title },

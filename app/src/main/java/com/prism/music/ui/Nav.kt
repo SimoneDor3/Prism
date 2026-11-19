@@ -34,6 +34,10 @@ object Routes {
     const val LOGIN_ADD = "login_add"
     /** Signs in to Discord for "Listening to Prism" on the listener's profile. */
     const val DISCORD_LOGIN = "discord_login"
+    /** "Before you sign in" to Spotify (1.8.7.5): what the unsanctioned sign-in means, then [SPOTIFY_LOGIN]. */
+    const val SPOTIFY_BEFORE = "spotify_before"
+    /** Spotify's own sign-in page (read-only session). */
+    const val SPOTIFY_LOGIN = "spotify_login"
     const val DOWNLOADS = "downloads"
     const val LOCAL = "local"
     const val MOODS = "moods"
@@ -67,6 +71,8 @@ object Routes {
     const val RECOGNIZED = "recognized"
     /** Every shared component of the 1.7 redesign (debug builds, from Settings → About). */
     const val DESIGN_GALLERY = "design_gallery"
+    /** 1.8.7.6: the people who supported Prism (from Settings → Backup & about → About). */
+    const val SUPPORTERS = "supporters"
     /** One of Prism's own mixes (Daily Mix 1, the time-of-day mix, Release Radar). */
     fun mix(id: String) = "mix/${Uri.encode(id)}"
     fun podcast(id: String) = "podcast/${Uri.encode(id)}"

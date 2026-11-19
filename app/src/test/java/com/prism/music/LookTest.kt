@@ -121,13 +121,29 @@ class LookTest {
         }
     }
 
+    /** 1.8.6: the Minimal Look (the launch film's) is black and white, with no colour of Prism's own anywhere. */
+    @Test
+    fun theMinimalLookHasNoColourOfItsOwn() {
+        val look = BuiltInLooks.of("minimal")!!
+        assertEquals("s:DARK", look.values["theme_mode"])
+        assertEquals("b:1", look.values["pure_black"])
+        assertEquals("White light, not the spectrum", "s:WHITE", look.values["light_style"])
+        assertEquals("A white accent", "i:${0xFFFFFFFF.toInt()}", look.values["accent"])
+        assertEquals("s:CUSTOM", look.values["color_source"])
+        assertEquals("Pages carry no tint", "s:NEUTRAL", look.values["surface_tint"])
+        assertEquals("No ring of light on Play", "b:0", look.values["play_ring"])
+        assertEquals("A black player, no colour mesh", "s:BLACK", look.values["player_background"])
+        assertEquals("It survives the check every shared Look gets", look.values, LookCode.sanitized(look, repo().lookKinds).values)
+        assertTrue("It is offered all year", BuiltInLooks.shown(LocalDate.of(2026, 3, 1)).any { it.id == "minimal" })
+    }
+
     @Test
     fun changesReadInWords() {
         assertEquals("Corners → Sharp", LookLabels.change(emptyMap(), mapOf("corners" to "s:SHARP"), emptyList()))
         assertEquals("Pure black → On", LookLabels.change(mapOf("pure_black" to "b:0"), mapOf("pure_black" to "b:1"), emptyList()))
         assertEquals("Text size → 110%", LookLabels.change(emptyMap(), mapOf("text_scale" to "f:1.1"), emptyList()))
         assertEquals(
-            "Liquid Glass → On and 1 more",
+            "Liquid glass → On and 1 more",
             LookLabels.change(emptyMap(), mapOf("liquid_glass" to "b:1", "frosted_glass" to "b:0"), listOf("liquid_glass", "frosted_glass")),
         )
         assertNull(LookLabels.change(mapOf("a" to "b:1"), mapOf("a" to "b:1"), emptyList()))

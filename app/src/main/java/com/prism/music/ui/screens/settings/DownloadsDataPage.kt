@@ -75,13 +75,13 @@ enum class MobileUse(val label: String) {
     /** `no_video_on_data`, the other way round: the chip is on while videos may play. Only shown with Data saver on. */
     VIDEOS(tr(R.string.videos)),
     /** `preload_cellular`. */
-    LOAD_AHEAD(tr(R.string.load_ahead)),
+    LOAD_AHEAD(tr(R.string.dd_use_load_ahead)),
     /** `smart_downloads_cellular`. Only shown with Smart Downloads on. */
     SMART_DOWNLOADS(tr(R.string.smart_downloads)),
     /** `lyrics_on_mobile_data`. */
     LYRICS(tr(R.string.lyrics)),
     /** `canvas_on_cellular`. Only shown with animated covers on. */
-    ANIMATED_COVERS(tr(R.string.animated_covers)),
+    ANIMATED_COVERS(tr(R.string.dd_use_showing_covers)),
     /** `canvas_with_downloads_cellular`. Only shown while animated covers are saved with downloads. */
     SAVING_COVERS(tr(R.string.dd_use_saving_covers)),
     /** `mix_tempo_cellular`. Only shown with Normalize volume or Crossfade on. */
@@ -90,7 +90,10 @@ enum class MobileUse(val label: String) {
     SING(tr(R.string.sing)),
 }
 
-/** The eight stored switches behind "Use mobile data for", as they are stored. */
+/**
+ * The stored switches behind "Use mobile data for", as they are stored. Loops from music videos on mobile data
+ * (`canvas_videos_cellular`, 1.8.6) are not here: that switch is in Canvas's own sheet on the Player page.
+ */
 internal data class MobileDataStored(
     val noVideoOnData: Boolean,
     val preloadCellular: Boolean,
@@ -103,8 +106,8 @@ internal data class MobileDataStored(
 ) {
     companion object {
         fun of(s: AppSettings) = MobileDataStored(
-            s.behavior.noVideoOnData, s.preloadCellular, s.smartDownloadsCellular, s.lyricsOnMobileData,
-            s.canvasOnCellular, s.canvasWithDownloadsCellular, s.mixTempoOnCellular, s.singOnCellular,
+            s.behavior.noVideoOnData, s.preloadCellular, s.smartDownloadsCellular, s.lyrics.onMobileData,
+            s.behavior.canvas.onCellular, s.behavior.canvas.withDownloadsCellular, s.mix.tempoOnCellular, s.singOnCellular,
         )
     }
 }
@@ -141,9 +144,9 @@ internal fun mobileUsesShown(s: AppSettings): List<MobileUse> = MobileUse.entrie
     when (it) {
         MobileUse.VIDEOS -> s.dataSaver
         MobileUse.SMART_DOWNLOADS -> s.smartDownloads
-        MobileUse.ANIMATED_COVERS -> s.canvasEnabled
-        MobileUse.SAVING_COVERS -> s.canvasEnabled && s.canvasWithDownloads
-        MobileUse.MEASURING -> s.normalize || s.mix
+        MobileUse.ANIMATED_COVERS -> s.behavior.canvas.enabled
+        MobileUse.SAVING_COVERS -> s.behavior.canvas.enabled && s.behavior.canvas.withDownloads
+        MobileUse.MEASURING -> s.normalize || s.mix.on
         MobileUse.LOAD_AHEAD, MobileUse.LYRICS, MobileUse.SING -> true
     }
 }
@@ -254,7 +257,7 @@ fun DownloadsDataPage(bottomPadding: Dp, find: String? = null, showBack: Boolean
     val sectionsChanged = reset.add(tr(R.string.dd_sections_in_local_files), s.localSections, d.localSections, ::sectionsText) { prefs.setLocalSections(it) }
     val smartChanged = reset.add(tr(R.string.smart_downloads), s.smartDownloads, d.smartDownloads, onOff, setSmart)
     val spaceChanged = reset.add(tr(R.string.space_to_use), s.offlineGb, d.offlineGb, ::formatGb, setSpace)
-    val canvasSaveChanged = reset.add(tr(R.string.save_with_downloads), s.canvasWithDownloads, d.canvasWithDownloads, onOff, setCanvasSave)
+    val canvasSaveChanged = reset.add(tr(R.string.save_with_downloads), s.behavior.canvas.withDownloads, d.behavior.canvas.withDownloads, onOff, setCanvasSave)
     val preloadChanged = reset.add(tr(R.string.load_ahead), s.preload, d.preload, { it.label }) { prefs.setPreload(it) }
     val saverChanged = reset.add(tr(R.string.data_saver), s.dataSaver, d.dataSaver, onOff) { prefs.setDataSaver(it) }
     val usesChanged = reset.add(tr(R.string.dd_use_mobile_data_for), uses, mobileDataToMerged(MobileDataStored.of(d)), ::usesText) { back ->
@@ -321,9 +324,9 @@ fun DownloadsDataPage(bottomPadding: Dp, find: String? = null, showBack: Boolean
                 cacheBytes = c.songCacheBytes()
             }
         }
-        if (s.canvasEnabled) group(tr(R.string.animated_covers)) {
+        if (s.behavior.canvas.enabled) group(tr(R.string.animated_covers)) {
             SwitchRow(
-                tr(R.string.save_with_downloads), s.canvasWithDownloads,
+                tr(R.string.save_with_downloads), s.behavior.canvas.withDownloads,
                 info = tr(R.string.a_downloaded_song_s_animated_cover), changed = canvasSaveChanged, onChange = setCanvasSave,
             )
             DdCanvasStorage()
@@ -391,7 +394,10 @@ private fun DdCanvasStorage() {
     val saved by c.canvas.saved.collectAsState()
     var version by remember { mutableIntStateOf(0) }
     val sizes by produceState(0L to 0L, version, saved) {
-        value = withContext(Dispatchers.IO) { c.canvasStore.savedBytes to c.canvasStore.recentBytes }
+        // 1.8.6: loops cut from music videos count with the animated covers (Canvas is both).
+        value = withContext(Dispatchers.IO) {
+            (c.canvasStore.savedBytes + c.clipFiles.savedBytes) to (c.canvasStore.recentBytes + c.clipFiles.recentBytes)
+        }
     }
     fun mb(bytes: Long) = tr(R.string.t_0f_mb).format(bytes / 1_048_576f)
     LinkRow(
@@ -400,13 +406,13 @@ private fun DdCanvasStorage() {
         info = tr(R.string.save_one_from_the_player_s), action = true,
     ) {
         if (saved.count > 0) scope.launch {
-            withContext(Dispatchers.IO) { c.canvasStore.clearSaved() }
+            withContext(Dispatchers.IO) { c.canvasStore.clearSaved(); c.clipFiles.clearSaved() }
             version++
         }
     }
     LinkRow(tr(R.string.recently_played_covers), value = tr(R.string.tap_to_clear, mb(sizes.second)), info = tr(R.string.kept_up_to_400_mb_so), action = true) {
         scope.launch {
-            withContext(Dispatchers.IO) { c.canvasStore.clearRecent() }
+            withContext(Dispatchers.IO) { c.canvasStore.clearRecent(); c.clipFiles.clearRecent() }
             version++
         }
     }

@@ -460,8 +460,8 @@ fun PlayerScrubber(positionMs: Long, durationMs: Long, centerLabel: @Composable 
             quietMarks = if (blendShape?.fadesOut == true) remember(blendShape) { listOf(blendShape.outFrom) } else emptyList(),
         )
         Box(Modifier.fillMaxWidth().offset(y = (-9).dp).heightIn(min = 16.dp)) {
-            val elapsed = settings.playerTimes == com.prism.music.data.prefs.PlayerTimes.BOTH || settings.playerTimes == com.prism.music.data.prefs.PlayerTimes.ELAPSED
-            val left = settings.playerTimes == com.prism.music.data.prefs.PlayerTimes.BOTH || settings.playerTimes == com.prism.music.data.prefs.PlayerTimes.LEFT
+            val elapsed = settings.player.times == com.prism.music.data.prefs.PlayerTimes.BOTH || settings.player.times == com.prism.music.data.prefs.PlayerTimes.ELAPSED
+            val left = settings.player.times == com.prism.music.data.prefs.PlayerTimes.BOTH || settings.player.times == com.prism.music.data.prefs.PlayerTimes.LEFT
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 if (elapsed) Text(formatTime((shown * duration).toLong()), style = times, color = Color.White.copy(alpha = 0.55f)) else Spacer(Modifier.width(1.dp))
                 if (left) Text(
@@ -571,10 +571,10 @@ fun TransportRow(
     val style = LocalAppSettings.current.transportStyle
     val playSize = if (compact) 58.dp else 74.dp
     // With shuffle and repeat beside it, play's touch area gives a little room back (narrow phones).
-    val playTouch = if (compact) 76.dp else if (LocalAppSettings.current.playerShuffleRepeat) 80.dp else 92.dp
+    val playTouch = if (compact) 76.dp else if (LocalAppSettings.current.player.shuffleRepeat) 80.dp else 92.dp
     val skipSize = if (compact) 44.dp else 53.dp
     // Settings → Player: shuffle and repeat either side of the transport.
-    val modes = LocalAppSettings.current.playerShuffleRepeat
+    val modes = LocalAppSettings.current.player.shuffleRepeat
     val shuffle by pc.shuffle.collectAsState()
     val smart by LocalContainer.current.queue.smartShuffle.collectAsState()
     val repeat by pc.repeatMode.collectAsState()
@@ -877,16 +877,34 @@ fun barHeights(style: ScrubberStyle, thick: Float): Pair<Dp, Dp> = when (style) 
 
 @Composable
 fun VolumeRow(volume: PlayerVolume) {
-    val s = LocalAppSettings.current
-    // Reddit, 1.7.9.1: "Volume bar like the progress bar" takes its style's height and thickness; else its own, as before.
-    val (idle, held) = if (s.volumeMatchesProgress) barHeights(s.scrubberStyle, s.scrubberThickness) else 6.dp to 10.dp
+    // Like the progress bar, its color can come from the cover: the song's art, read only when it's asked for.
+    val cover = if (LocalAppSettings.current.volumeMatchesProgress) {
+        val current by LocalContainer.current.player.currentSong.collectAsState()
+        current?.let { com.prism.music.data.PlaylistCovers.artOf(it) }
+    } else null
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Icon(PrismIcons.VolumeDown, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
-        ThinSlider(volume.level, volume::drag, Modifier.weight(1f).testTag("volumeBar"), volume::release, idleHeight = idle, activeHeight = held)
+        VolumeSlider(volume.level, volume::drag, volume::release, cover, Modifier.weight(1f).testTag("volumeBar"))
         Spacer(Modifier.width(10.dp))
         Icon(PrismIcons.VolumeUp, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(20.dp))
     }
+}
+
+/**
+ * The volume bar itself: white, or with "Volume bar like the progress bar" the progress bar's heights and its light too
+ * (the split light, or the color picked for it with [cover] the song's art), as [PlayerScrubber] draws it.
+ */
+@Composable
+internal fun VolumeSlider(level: Float, onDrag: (Float) -> Unit, onRelease: () -> Unit, cover: String?, modifier: Modifier = Modifier) {
+    val s = LocalAppSettings.current
+    // Reddit, 1.7.9.1: "Volume bar like the progress bar" takes its style's height and thickness; else its own, as before.
+    val like = s.volumeMatchesProgress
+    val (idle, held) = if (like) barHeights(s.scrubberStyle, s.scrubberThickness) else 6.dp to 10.dp
+    ThinSlider(
+        level, onDrag, modifier, onRelease, idleHeight = idle, activeHeight = held,
+        spectrum = like, fill = if (like) scrubberFill(s.scrubberColor, cover) else null,
+    )
 }
 
 /**
@@ -916,7 +934,7 @@ fun PlayerActionRow(
     val settings by c.settings.flow.collectAsState()
     val videoLoading by pc.videoLoading.collectAsState()
     // Settings → Player → "Song / Video switch" off: audio only, the Video button goes.
-    val chosen = settings.playerButtons.filter { it != PlayerButton.VIDEO || settings.showVideoSwitch }
+    val chosen = settings.player.buttons.filter { it != PlayerButton.VIDEO || settings.showVideoSwitch }
     // Six to a row still fits a small phone: the buttons narrow a little past four.
     val glyph = when { chosen.size >= 6 -> 46.dp; chosen.size == 5 -> 50.dp; else -> 56.dp }
     // In one glass capsule (1.7), or (1.7.8, #155) as separate buttons spread across the row, as Prism 1.6 had them.

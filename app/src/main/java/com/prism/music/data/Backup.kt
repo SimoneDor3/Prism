@@ -102,20 +102,7 @@ class Backup(private val c: AppContainer) {
     /** About how big a backup of [parts] would be, in bytes. */
     suspend fun estimate(parts: Set<BackupPart>): Long = withContext(Dispatchers.IO) { filesToBackUp(parts).sumOf { it.length() } }
 
-    private fun filesToBackUp(parts: Set<BackupPart>): List<File> {
-        val keep = mutableListOf<File>()
-        File(data, "databases").listFiles()?.forEach { f ->
-            if ((BackupPart.HISTORY in parts && f.name.startsWith(DB)) || (BackupPart.DOWNLOADS in parts && f.name.startsWith(EXO_DB))) keep += f
-        }
-        File(data, "shared_prefs").listFiles()?.forEach { f -> if (prefsPart(f.name.removeSuffix(".xml")) in parts) keep += f }
-        ctx.filesDir.walkTopDown()
-            .onEnter { dir -> dir == ctx.filesDir || filePart(dir.relativeTo(ctx.filesDir).invariantSeparatorsPath.substringBefore('/')) in parts }
-            .filter { it.isFile && (it.parentFile != ctx.filesDir || filePart(it.name) in parts) }
-            // A restore's tags not read in yet: the database's are written above instead.
-            .filter { "files/" + it.relativeTo(ctx.filesDir).invariantSeparatorsPath != TAGS_ENTRY }
-            .forEach { keep += it }
-        return keep
-    }
+    private fun filesToBackUp(parts: Set<BackupPart>): List<File> = filesToBackUp(data, ctx.filesDir, parts)
 
     /** The parts the backup at [uri] holds (every one for a backup made before 1.7.8), or null when it isn't one. */
     suspend fun partsOf(uri: Uri): Set<BackupPart>? = withContext(Dispatchers.IO) {
@@ -243,6 +230,27 @@ class Backup(private val c: AppContainer) {
         private const val DB = "prism.db"
         private const val EXO_DB = "exoplayer_internal.db"
         private val ALLOWED = listOf("databases/", "shared_prefs/", "datastore/", "files/")
+        /** The settings store's own folder under files/: it holds the YouTube Music sign-in beside the settings (#498). */
+        private const val STORE_DIR = "datastore"
+
+        /**
+         * The files a backup of [parts] takes from the app's [data] folder ([filesDir] inside it). Never the settings
+         * store's own file, whatever the parts: settings and the sign-in travel as values ([export]), each with its part.
+         */
+        internal fun filesToBackUp(data: File, filesDir: File, parts: Set<BackupPart>): List<File> {
+            val keep = mutableListOf<File>()
+            File(data, "databases").listFiles()?.forEach { f ->
+                if ((BackupPart.HISTORY in parts && f.name.startsWith(DB)) || (BackupPart.DOWNLOADS in parts && f.name.startsWith(EXO_DB))) keep += f
+            }
+            File(data, "shared_prefs").listFiles()?.forEach { f -> if (prefsPart(f.name.removeSuffix(".xml")) in parts) keep += f }
+            filesDir.walkTopDown()
+                .onEnter { dir -> dir == filesDir || filePart(dir.relativeTo(filesDir).invariantSeparatorsPath.substringBefore('/')) in parts }
+                .filter { it.isFile && (it.parentFile != filesDir || filePart(it.name) in parts) }
+                // A restore's tags not read in yet: the database's are written above instead.
+                .filter { "files/" + it.relativeTo(filesDir).invariantSeparatorsPath != TAGS_ENTRY }
+                .forEach { keep += it }
+            return keep
+        }
         private val SETTINGS_MAP = MapSerializer(String.serializer(), String.serializer())
 
         private const val BRING_HISTORY = "bring/history.json"
@@ -329,7 +337,11 @@ class Backup(private val c: AppContainer) {
                 "lossless_links", "lossless_misses", "lossless_hidden", "lossless_alac",
                 // 1.8.2: songs skipped in lists' downloads (#221), when kept playlists were last read (#298).
                 "download_skips", "kept_playlists",
+                // 1.8.7 (#408): downloads coming down as their music video's sound.
+                com.prism.music.AppContainer.DOWNLOAD_SOUNDS,
             ).forEach { put(it, BackupPart.DOWNLOADS) }
+            // 1.8.7 (#408): which way gets links on each of this phone's networks, by an id only this phone knows.
+            put(com.prism.music.data.stream.WayMemory.PREFS, null)
             // The Last.fm connection (and its waiting scrobbles) is the listener's account.
             put("lastfm", BackupPart.ACCOUNTS)
             // 1.8.1: the Spotify connection's Client ID and switches go with the accounts (a Client ID is public in
@@ -342,8 +354,16 @@ class Backup(private val c: AppContainer) {
             put("cache_formats", null)
             // What this sitting's mixes have played (1.8.2): over within hours, nothing a restored phone would want.
             put("session_heard", null)
+            // 1.8.7 (#498): this phone's own state, not settings. What its account was seen to have (Premium's formats
+            // by sign-in, uploads), the last song a widget showed, Home's sections as last read, crash and update marks.
+            listOf("premium_quality", "uploads", "widget_state", "home_shelf_ids", "crashlog", "updates", "playback_service").forEach { put(it, null) }
+            // Replay's own notes (which recap and milestones were told, Rewind's state) go with the listening.
+            listOf("recap", "milestones", "rewind").forEach { put(it, BackupPart.HISTORY) }
             // Which install this is (RestoredInstall): restoring one's own backup elsewhere mustn't look like Android's.
             put(RestoredInstall.PREFS, null)
+            // 1.8.7.6: which asks to support Prism were shown go with the settings (as the switch does), so a restored
+            // phone doesn't ask again.
+            put(com.prism.music.ui.support.SupportMarks.PREFS, BackupPart.SETTINGS)
         }
 
         /** Folders (and files) right under files/ by part; anything else counts as Settings. */
@@ -359,6 +379,15 @@ class Backup(private val c: AppContainer) {
             listOf(STAGING, "models", "stems", REDOWNLOAD, RESTORED_SETTINGS).forEach { put(it, null) }
             // Lyric translations (1.7.8) are a cache of Google's answers, asked for again when missing.
             put("translations", null)
+            // 1.8.7 (#498): the settings store's own file holds the sign-in; it went out with "Settings" because
+            // anything not named here counts as Settings. Never in a backup: its values travel by part ([export]).
+            put(STORE_DIR, null)
+            // The playback diagnostics and crash logs name songs and the account's state; Canvas clips and their index
+            // are a cache of videos, fetched again.
+            listOf("diagnostics", "crashes", "canvas_clips", "canvas_index.json").forEach { put(it, null) }
+            // 1.8.7 §3.2: the music videos' songs as YouTube and Prism's matches paired them, learned again when missing.
+            // (The listener's picks go with the Library, download stand-ins with the Downloads, in their own files.)
+            put(com.prism.music.data.meta.PlaysAs.DIR, null)
         }
 
         internal fun prefsPart(name: String): BackupPart? = if (name in PREFS_PARTS) PREFS_PARTS[name] else BackupPart.SETTINGS
@@ -399,6 +428,9 @@ class Backup(private val c: AppContainer) {
                     if (whole) { if (m.withDownloads || filePart(f.name) != BackupPart.DOWNLOADS) f.deleteRecursively() }
                     else if (filePart(f.name) in parts) f.deleteRecursively()
                 }
+                // A backup by parts never brings the settings store's own file. One made by 1.7.8 to 1.8.6 with
+                // "Settings" ticked did (#498): restored, it would sign this phone in as whoever made the backup.
+                if (!whole) File(staging, "files/$STORE_DIR").deleteRecursively()
                 // In with the backup.
                 val settingsFile = File(staging, SETTINGS_ENTRY)
                 staging.walkTopDown().filter { it.isFile && it != manifestFile && it != settingsFile }.forEach { f ->

@@ -145,7 +145,7 @@ import com.prism.music.ui.theme.ink3
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.semantics.selected
-import dev.chrisbanes.haze.hazeSource
+import com.prism.music.ui.theme.glassSource
 import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -157,8 +157,6 @@ import kotlin.math.abs
  * The app's screen. Declared in the manifest as [PrismActivity], so that ".MainActivity" can be the classic app-icon
  * alias (#20) and home-screen icons made before stay valid.
  */
-/** A volume key press on a cast speaker or TV, out of 100. */
-private const val VOLUME_KEY_STEP = 4
 /** How .prismlook files are sent (a zip: the Look's code and any photos or font it carries). */
 private const val LOOK_MIME = "application/zip"
 
@@ -286,10 +284,18 @@ open class MainActivity : ComponentActivity() {
     }
 
     /** While casting, the volume keys turn the speaker or TV up and down (with Prism open; elsewhere, the media session does). */
+    private var castVolumeKeyAt = 0L
+
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
         val cast = container.cast
         if (cast.casting && (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP || keyCode == android.view.KeyEvent.KEYCODE_VOLUME_DOWN)) {
-            cast.adjustVolume(if (keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP) VOLUME_KEY_STEP else -VOLUME_KEY_STEP)
+            // #534: one step per press, and a held key no faster than the phone's own volume climbs.
+            val now = android.os.SystemClock.uptimeMillis()
+            if (com.prism.music.playback.RemoteVolume.takesKey(event.repeatCount, now, castVolumeKeyAt)) {
+                castVolumeKeyAt = now
+                val up = keyCode == android.view.KeyEvent.KEYCODE_VOLUME_UP
+                cast.setVolume(com.prism.music.playback.RemoteVolume.stepped(cast.volume ?: 50, if (up) 1 else -1))
+            }
             return true
         }
         return super.onKeyDown(keyCode, event)
@@ -493,6 +499,9 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
                 if (settings.behavior.lockPortrait && !tablet) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
+        // Settings → Performance → "Smoother scrolling" (#336): the screen's fastest mode while Prism is open. `settings` is
+        // the effective one, so Performance mode reads it as off; battery saver does too.
+        com.prism.music.ui.SmoothScrollingEffect(settings.behavior.smoothScrolling)
         val navController = rememberNavController()
         var playerOpen by rememberSaveable { mutableStateOf(false) }
         val navigator = remember(navController) {
@@ -524,7 +533,8 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
         // Done button sat under the tab bar on phones, which it measures itself against when it's opened from Settings).
         val onboardingPicker = (route?.startsWith(Routes.PICK_ARTISTS) == true || route?.startsWith(Routes.ACCOUNT) == true) &&
             backStack?.arguments?.getBoolean("onboarding") == true
-        val showChrome = route != Routes.LOGIN && route != Routes.LOGIN_ADD && route != Routes.DISCORD_LOGIN && route != Routes.WELCOME && !onboardingPicker
+        val showChrome = route != Routes.LOGIN && route != Routes.LOGIN_ADD && route != Routes.DISCORD_LOGIN &&
+            route != Routes.SPOTIFY_BEFORE && route != Routes.SPOTIFY_LOGIN && route != Routes.WELCOME && !onboardingPicker
         val tabs = settings.navTabs.map { it.tab(settings.tabNames[it]) }
 
         val together by c.together.state.collectAsState()
@@ -649,8 +659,8 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
                 Box(
                     Modifier.fillMaxSize().then(underPlayer).nestedScroll(barScroll)
-                        // The page is copied only when glass will sample it (#343).
-                        .then(if (com.prism.music.ui.theme.glassSamplesThePage(Build.VERSION.SDK_INT, settings.liquidGlass, settings.frostedGlass)) Modifier.hazeSource(haze) else Modifier)
+                        // The page is copied only when glass will sample it (#343), on the background behind it (1.8.7).
+                        .glassSource(haze, com.prism.music.ui.theme.glassSamplesThePage(Build.VERSION.SDK_INT, settings.liquidGlass, settings.frostedGlass), MaterialTheme.colorScheme.background)
                         .then(if (settings.swipeTabs && !useRail) swipeBetweenTabs(tabs, route, selectTab) else Modifier),
                 ) {
                   CompositionLocalProvider(com.prism.music.ui.components.LocalHiddenByPlayer provides hiddenByPlayer) {
@@ -763,6 +773,7 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
                         composable(Routes.EXPLORE) { ScreenBackdrop(BackdropScreen.SEARCH) { com.prism.music.ui.screens.ExploreScreen(bottomPadding) } }
                         composable(Routes.IMPORT) { ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.ImportScreen(bottomPadding) } }
                         composable(Routes.DESIGN_GALLERY) { ScreenBackdrop(BackdropScreen.SETTINGS) { com.prism.music.ui.components.DesignGallery(bottomPadding) } }
+                        composable(Routes.SUPPORTERS) { ScreenBackdrop(BackdropScreen.SETTINGS) { com.prism.music.ui.screens.settings.SupportersScreen(bottomPadding) } }
                         composable(Routes.TOGETHER) { ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.TogetherScreen(bottomPadding) } }
                         composable(Routes.PODCASTS) { ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.PodcastsScreen(bottomPadding) } }
                         composable(Routes.UPLOADS) { ScreenBackdrop(BackdropScreen.LIBRARY) { com.prism.music.ui.screens.UploadsScreen(bottomPadding) } }
@@ -783,6 +794,19 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
                         }
                         composable(Routes.DISCORD_LOGIN) {
                             com.prism.music.ui.screens.DiscordLoginScreen(onBack = { navController.popBackStack() })
+                        }
+                        composable(Routes.SPOTIFY_BEFORE) {
+                            com.prism.music.ui.screens.SpotifyBeforeScreen(
+                                onSignIn = { navController.navigate(Routes.SPOTIFY_LOGIN) },
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
+                        composable(Routes.SPOTIFY_LOGIN) {
+                            com.prism.music.ui.screens.SpotifyLoginScreen(
+                                // Signed in: back past "Before you sign in" to where the listener came from.
+                                onDone = { if (!navController.popBackStack(Routes.SPOTIFY_BEFORE, inclusive = true)) navController.popBackStack() },
+                                onBack = { navController.popBackStack() },
+                            )
                         }
                         composable(Routes.LOGIN_ADD) {
                             LoginScreen(
@@ -910,14 +934,14 @@ private fun PrismRoot(deepLink: MutableStateFlow<Uri?>) {
                 val artAhead = song?.takeIf { !playerOpen }?.let { c.covers.art(it) }
                 if (artAhead != null) {
                     val warmContext = androidx.compose.ui.platform.LocalContext.current
-                    LaunchedEffect(artAhead, settings.fullBleedArtwork, settings.playerBackground, settings.playerBlur) {
+                    LaunchedEffect(artAhead, settings.fullBleedArtwork, settings.player.background, settings.player.blur) {
                         // Not as the song starts, whose own start comes first, nor for a song skipped straight past.
                         kotlinx.coroutines.delay(1_500)
                         runCatching {
                             com.prism.music.ui.player.warmPlayerArt(
                                 warmContext, artAhead, settings.fullBleedArtwork,
-                                meshToo = settings.playerBackground != com.prism.music.data.prefs.PlayerBackground.GRADIENT,
-                                blurStrength = settings.playerBlur,
+                                meshToo = settings.player.background != com.prism.music.data.prefs.PlayerBackground.GRADIENT,
+                                blurStrength = settings.player.blur,
                             )
                         }
                     }

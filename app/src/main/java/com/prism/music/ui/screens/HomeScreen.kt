@@ -155,7 +155,16 @@ private fun forgetHomeLists() {
 internal fun extraShelves(shelves: List<Shelf>, known: Set<String>, placed: Collection<Shelf>, picks: Shelf?, feedPicks: Shelf?, dial: Shelf?, hiddenKinds: Set<String>): List<Shelf> =
     shelves.filter { s ->
         shelfKey(s.title) !in known && placed.none { it === s } && s !== picks && s !== feedPicks && s !== dial && shelfKind(s) !in hiddenKinds
-    }
+    // Each is a row of Home keyed by its title as a key has it ("Mixed for you", "Mixed for You "): once (1.8.7: a
+    // second one was a key Home's list had already used, and it closed).
+    }.distinctBy { shelfKey(it.title) }
+
+/**
+ * Quick picks from the pages in so far ([page]), for the section to show before the rest of Home loads (#371). Known
+ * by what it is in any language (1.8.7: by its English title only, a Spanish Home waited for every page); a shelf of
+ * song rows that isn't Quick picks is never taken for it.
+ */
+internal fun earlyQuickPicks(page: List<Shelf>, owner: String?): Shelf? = page.quickPicks(owner)
 
 /**
  * What YouTube's own Quick picks may offer while the set made around your artists is made: nothing on a pull to refresh
@@ -238,7 +247,7 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
     val signInChanged = remember(signIn) {
         (homeSignIn != null && homeSignIn != signIn).also { if (it) forgetHomeLists(); homeSignIn = signIn }
     }
-    val layoutNow by rememberUpdatedState(settings.homeLayout)
+    val layoutNow by rememberUpdatedState(settings.home.layout)
     // Where each YouTube section's More button goes, by its key: the section is found again under another language's title.
     val shelfIds = remember { c.app.getSharedPreferences("home_shelf_ids", android.content.Context.MODE_PRIVATE) }
     fun knownShelves(): Map<String, String> = shelfIds.all.mapNotNull { (k, v) -> (v as? String)?.let { k to it } }.toMap()
@@ -260,8 +269,8 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
         val (fresh, pages) = c.ytm.fullHomePages(
             pages = 3, maxPages = 8,
             satisfied = { got -> matchShelves(wanted, got, known).size == wanted.size && (!picksOn || got.quickPicks(owner) != null) && (!dialWanted || got.speedDial(owner) != null) },
-            // By its title only: on a page of its own, another shelf of song rows could pass for it by its shape.
-            onPage = { got -> if (earlyPicks.value == null) got.firstOrNull { it.title.equals("Quick picks", true) }?.let { earlyPicks.value = it } },
+            // As soon as its page is in, in any language (1.8.7): it's known by what it is, not its English title.
+            onPage = { got -> if (earlyPicks.value == null) earlyQuickPicks(got, owner)?.let { earlyPicks.value = it } },
         )
         // Kept for the next start, to show while this loads again (#126).
         c.scope.launch { c.homeCache.write(pages) }
@@ -297,21 +306,21 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
     // A reload whose feed has no Quick picks keeps the last ones, rather than the section vanishing or swapping.
     val early by earlyPicks.collectAsState()
     val picks = remember(shelves, settings.accountName, early) { (early ?: shelves.quickPicks(settings.accountName))?.also { lastQuickPicks.value = it } ?: lastQuickPicks.value }
-    val dialOn = settings.homeLayout.any { it.key == HomeSections.SPEED_DIAL && it.visible }
+    val dialOn = settings.home.layout.any { it.key == HomeSections.SPEED_DIAL && it.visible }
     // The Speed dial section shows YouTube's own, so it isn't added again as a shelf of its own.
     val dial = shelves.speedDial(settings.accountName)?.takeIf { dialOn }
     // The holiday section and holiday pins only in their season (1.8.0), read from the phone's own date.
     val today = c.seasonal.today()
     // YouTube's sections on Home, found by title or, in another language, by where they lead (#277).
-    val ytShelves = remember(settings.homeLayout, shelves) {
-        matchShelves(settings.homeLayout.map { it.key }.filter { it.startsWith(HomeSections.YT_PREFIX) }, shelves, knownShelves())
+    val ytShelves = remember(settings.home.layout, shelves) {
+        matchShelves(settings.home.layout.map { it.key }.filter { it.startsWith(HomeSections.YT_PREFIX) }, shelves, knownShelves())
     }
-    val layout = remember(settings.homeLayout, shelves, settings.autoAddSections, picks, settings.homeHideKinds, today, ytShelves) {
-        val known = settings.homeLayout.map { it.key }.toSet()
+    val layout = remember(settings.home.layout, shelves, settings.autoAddSections, picks, settings.home.hideKinds, today, ytShelves) {
+        val known = settings.home.layout.map { it.key }.toSet()
         val placed = ytShelves.values
-        val extra = if (settings.autoAddSections) extraShelves(shelves, known, placed, picks, shelves.quickPicks(settings.accountName), dial, settings.homeHideKinds)
+        val extra = if (settings.autoAddSections) extraShelves(shelves, known, placed, picks, shelves.quickPicks(settings.accountName), dial, settings.home.hideKinds)
             .map { HomeSectionConfig(shelfKey(it.title), it.title) } else emptyList()
-        HomeSections.inSeason(settings.homeLayout, today).filter { it.visible } + extra
+        HomeSections.inSeason(settings.home.layout, today).filter { it.visible } + extra
     }
     // Last month's recap (1.8.5), part of the Replay section: looked for once while Home is open.
     val recap = rememberRecapCard(wanted = layout.any { it.key == HomeSections.REPLAY })
@@ -432,6 +441,9 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
     val openItem: (BrowseItem) -> Unit = { nav.open(it, onSong) }
 
     val list = rememberLazyListState()
+    // Whether Smart Downloads was ever answered (#339): its card shows until it is, and no other offer shows beside it.
+    var smartAnswered by remember { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(Unit) { smartAnswered = c.settings.smartDownloadsChosen() }
     // Content melts away under the status bar once the greeting has scrolled off.
     val scrolled by remember { derivedStateOf { list.firstVisibleItemIndex > 0 || list.firstVisibleItemScrollOffset > 24 } }
     val edge by animateFloatAsState(if (scrolled) 1f else 0f, tween(220), label = "edge")
@@ -446,7 +458,11 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
             item { HomeTopBar() }
             item(key = "update") { UpdateBanner() }
             item(key = "performance") { PerformanceOffer() }
-            item(key = "smartDownloads") { SmartDownloadsOffer() }
+            item(key = "smartDownloads") { SmartDownloadsOffer(smartAnswered) { smartAnswered = true } }
+            // 1.8.7.6: the 100-hour card, never beside another offer (one ask at a time).
+            item(key = "support") {
+                com.prism.music.ui.support.SupportHomeCard(otherOffer = performanceOfferShows() || smartAnswered != true && settings.onboarded)
+            }
             if (!online) item(key = "offline") { OfflineNote() }
             if (online && home.state is Load.Loading && shelves.isEmpty()) item { LoadingState() }
             // With the last Home on show, a failed refresh leaves it there (pull to refresh tries again).
@@ -541,14 +557,14 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
                             // Not a shelf that already shows as Quick picks or Speed dial (it was on Home twice), nor of a
                             // kind left off Home (Customize Home → Leave off Home).
                             val shelf = (ytShelves[cfg.key] ?: shelves.firstOrNull { shelfKey(it.title) == cfg.key })
-                                ?.takeIf { it !== picks && it !== dial && shelfKind(it) !in settings.homeHideKinds }
+                                ?.takeIf { it !== picks && it !== dial && shelfKind(it) !in settings.home.hideKinds }
                             if (shelf != null) ShelfSection(cfg, shelf, openItem)
                         }
                     }
                     }
                 }
             }
-            if (settings.homeCustomizeButton) item {
+            if (settings.home.customizeButton) item {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 32.dp),
                     horizontalArrangement = Arrangement.Center,
@@ -575,12 +591,17 @@ fun HomeScreen(bottomPadding: androidx.compose.ui.unit.Dp) {
  * offered where it's seen. Either answer puts the card away for good; Settings has the switch.
  */
 @Composable
-private fun PerformanceOffer() {
-    val c = LocalContainer.current
+private fun performanceOfferShows(): Boolean {
     val settings = LocalAppSettings.current
     val context = androidx.compose.ui.platform.LocalContext.current
     val slow = remember { com.prism.music.data.DevicePower.mayBeSlow(context) }
-    if (!slow || settings.performanceOffered || settings.performanceMode) return
+    return slow && !settings.performanceOffered && !settings.performanceMode
+}
+
+@Composable
+private fun PerformanceOffer() {
+    val c = LocalContainer.current
+    if (!performanceOfferShows()) return
     val ui = com.prism.music.ui.theme.LocalUi.current
     Column(
         Modifier.padding(start = 16.dp, end = 16.dp, top = ui.gap(14.dp)).fillMaxWidth().pane(ui.shape(16.dp)).padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
@@ -608,14 +629,12 @@ private fun PerformanceOffer() {
  * the card away for good (Downloads, storage & data has the switch); it never shows to anyone who had it before.
  */
 @Composable
-private fun SmartDownloadsOffer() {
+private fun SmartDownloadsOffer(answered: Boolean?, onAnswered: () -> Unit) {
     val c = LocalContainer.current
     val settings = LocalAppSettings.current
-    var answered by remember { mutableStateOf<Boolean?>(null) }
-    LaunchedEffect(Unit) { answered = c.settings.smartDownloadsChosen() }
     if (answered != false || !settings.onboarded) return
     val ui = com.prism.music.ui.theme.LocalUi.current
-    val answer = { on: Boolean -> c.settings.setSmartDownloads(on); answered = true }
+    val answer = { on: Boolean -> c.settings.setSmartDownloads(on); onAnswered() }
     Column(
         Modifier.padding(start = 16.dp, end = 16.dp, top = ui.gap(14.dp)).fillMaxWidth().pane(ui.shape(16.dp)).padding(start = 16.dp, end = 8.dp, top = 12.dp, bottom = 4.dp),
     ) {
@@ -679,13 +698,13 @@ private fun HomeTopBar() {
         java.text.SimpleDateFormat(android.text.format.DateFormat.getBestDateTimePattern(locale, tr(R.string.eeeedmmmm)), locale).format(java.util.Date())
     }
     val ui = com.prism.music.ui.theme.LocalUi.current
-    val header = settings.homeHeader
+    val header = settings.home.header
     // A picture behind the greeting (1.7.6): it runs up under the status bar and fades into the page at its foot.
     if (header == com.prism.music.data.prefs.HomeHeader.PICTURE || header == com.prism.music.data.prefs.HomeHeader.NOW_PLAYING) {
         val statusTop = androidx.compose.foundation.layout.WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-        Box(Modifier.fillMaxWidth().heightIn(min = statusTop + settings.homeHeaderHeight.dp.dp)) {
+        Box(Modifier.fillMaxWidth().heightIn(min = statusTop + settings.home.headerHeight.dp.dp)) {
             HeaderPicture(
-                header, settings.homeHeaderPicture,
+                header, settings.home.headerPicture,
                 Modifier.matchParentSize()
                     .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
                     .drawWithContent {
@@ -740,14 +759,14 @@ private fun HomeTopRow(greeting: String, today: String, showGreeting: Boolean) {
                 name, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             // Settings, Home screen, Continue line hides it.
-            if (settings.homeContinue) ContextLine()
+            if (settings.home.continueLine) ContextLine()
         } else Spacer(Modifier.weight(1f))
         // Podcasts live a tap away from Home (as on Spotify's), in the same quiet round button as Customize.
         // With the top Customize button off, Podcasts moves over into its place, beside the account.
         // Settings → Home screen → "Podcasts button" off (#28): Podcasts opens from Library instead.
-        if (settings.homePodcastsButton) com.prism.music.ui.components.RoundAction(PrismIcons.Podcasts, tr(R.string.podcasts)) { nav.go(Routes.PODCASTS) }
-        if (settings.homeCustomizeTopButton) {
-            if (settings.homePodcastsButton) Spacer(Modifier.width(8.dp))
+        if (settings.home.podcastsButton) com.prism.music.ui.components.RoundAction(PrismIcons.Podcasts, tr(R.string.podcasts)) { nav.go(Routes.PODCASTS) }
+        if (settings.home.customizeTopButton) {
+            if (settings.home.podcastsButton) Spacer(Modifier.width(8.dp))
             com.prism.music.ui.components.RoundAction(PrismIcons.Customize, tr(R.string.customize_home_2)) { nav.go(Routes.CATALOGUE) }
         }
         Spacer(Modifier.width(8.dp))
@@ -866,7 +885,7 @@ private fun GreetingSection(cfg: HomeSectionConfig, recent: List<Song>) {
     data class Tile(val title: String, val icon: ImageVector?, val image: String?, val playable: Playable?, val onClick: () -> Unit)
     val prismLists by c.prismLibrary.lists.collectAsState()
     val tiles = buildList {
-        settings.homeShortcuts.forEach { sc ->
+        settings.home.shortcuts.forEach { sc ->
             val (icon, route) = when (sc) {
                 HomeShortcut.LIKED -> PrismIcons.HeartFilled to Routes.liked()
                 HomeShortcut.DOWNLOADS -> PrismIcons.DownloadDone to Routes.DOWNLOADS
@@ -884,7 +903,7 @@ private fun GreetingSection(cfg: HomeSectionConfig, recent: List<Song>) {
             }
             add(Tile(sc.label, icon, null, playable) { nav.go(route) })
         }
-        settings.homePlaylists.forEach { pin ->
+        settings.home.playlists.forEach { pin ->
             val prism = pin.id.startsWith(com.prism.music.data.PrismLibrary.PREFIX)
             // A deleted Prism playlist's pin has nothing to open.
             if (prism && prismLists.none { it.id == pin.id }) return@forEach
@@ -895,7 +914,7 @@ private fun GreetingSection(cfg: HomeSectionConfig, recent: List<Song>) {
         }
         // One tile per album: by its id, or (music files on the phone have no album id) by its title and artist.
         recent.distinctBy { s -> s.album?.id ?: s.album?.title?.takeIf { it.isNotBlank() }?.let { "t:${it.lowercase()}|${s.primaryArtist.lowercase()}" } ?: s.id }
-            .take(settings.homeRecentTiles).forEach { s ->
+            .take(settings.home.recentTiles).forEach { s ->
                 val album = s.album?.id?.let { AlbumItem(it, s.album.title, s.primaryArtist, s.thumbnail) }
                 add(Tile(s.album?.title ?: s.title, null, s.thumbnail, Playable.Of(album ?: SongItem(s))) {
                     when {
@@ -1167,6 +1186,15 @@ private fun SpeedDialTile(item: BrowseItem, modifier: Modifier, shape: androidx.
 internal fun HeroRow(items: List<BrowseItem>, open: (BrowseItem) -> Unit) {
     val ui = com.prism.music.ui.theme.LocalUi.current
     val menu = rememberPlayMenu()
+    val c = LocalContainer.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    // #507: the circle plays the card straight away, as the long press's Play does (a song's card plays already, and
+    // what can't be played, a mood, opens); the rest of the card opens it.
+    val play: (BrowseItem) -> Unit = { item ->
+        val target = item.playable()
+        if (item is SongItem || target == null) open(item)
+        else com.prism.music.ui.components.playPlayable(c, context, target, item.title, shuffle = false)
+    }
     LazyRow(contentPadding = PaddingValues(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         items(items.take(10)) { item ->
             Box(
@@ -1180,8 +1208,11 @@ internal fun HeroRow(items: List<BrowseItem>, open: (BrowseItem) -> Unit) {
                         Text(item.title, color = Color.White, style = MaterialTheme.typography.titleLarge, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         Text(com.prism.music.data.model.shownKinds(item.subtitle), color = Color.White.copy(alpha = 0.75f), style = MaterialTheme.typography.bodySmall, maxLines = 1)
                     }
-                    Box(Modifier.size(44.dp).clip(CircleShape).background(Color.White), contentAlignment = Alignment.Center) {
-                        Icon(PrismIcons.Play, null, tint = Color.Black)
+                    Box(
+                        Modifier.size(44.dp).clip(CircleShape).background(Color.White).clickable { play(item) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(PrismIcons.Play, tr(R.string.widget_play), tint = Color.Black)
                     }
                 }
             }
